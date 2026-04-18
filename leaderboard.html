@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NHL Bracket Leaderboard</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #060b18; color: #e0e0e0; font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+    header {
+      background: linear-gradient(135deg, #060b18, #0d1b3e);
+      border-bottom: 3px solid #c9a227;
+      padding: 14px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 8px;
+    }
+    header h1 { font-size: 1.3rem; color: #c9a227; letter-spacing: 1.5px; text-transform: uppercase; }
+    header p  { color: #666; font-size: 0.75rem; margin-top: 2px; }
+    .nav-links a { color: #c9a227; text-decoration: none; font-size: 0.8rem; font-weight: 600; margin-left: 14px; }
+    .nav-links a:hover { text-decoration: underline; }
+
+    main { max-width: 900px; margin: 0 auto; padding: 24px 16px; }
+
+    /* Status / loading */
+    #state-msg { text-align: center; padding: 40px; color: #555; }
+
+    /* Invite banner */
+    #invite-bar {
+      background: #0d1b3e; border: 1px solid #1f3060;
+      border-radius: 10px; padding: 14px 18px; margin-bottom: 20px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 10px;
+    }
+    #invite-bar span { color: #888; font-size: 0.82rem; }
+    #invite-bar strong { color: #fff; }
+    .btn-sm {
+      background: #c9a227; color: #000; border: none;
+      padding: 7px 16px; border-radius: 6px; font-size: 0.8rem;
+      font-weight: 700; cursor: pointer;
+    }
+    .btn-sm:hover { opacity: 0.88; }
+    .btn-sm.outline {
+      background: transparent; color: #c9a227;
+      border: 1px solid #c9a227;
+    }
+
+    /* Actual results entry (admin) */
+    #results-banner {
+      background: #0a1f0e; border: 1px solid #2e7d32;
+      border-radius: 10px; padding: 14px 18px; margin-bottom: 20px;
+    }
+    #results-banner h3 { color: #4caf50; font-size: 0.9rem; margin-bottom: 6px; }
+    #results-banner p  { color: #888; font-size: 0.78rem; }
+
+    /* Admin panel */
+    #admin-panel {
+      display: none;
+      background: #0d1b3e; border: 1px solid #1f3060;
+      border-radius: 10px; padding: 18px; margin-bottom: 20px;
+    }
+    #admin-panel h3 { color: #c9a227; margin-bottom: 12px; font-size: 0.95rem; }
+    .admin-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 8px; margin-bottom: 14px;
+    }
+    .admin-row { display: flex; flex-direction: column; gap: 3px; }
+    .admin-row label { font-size: 0.65rem; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+    .admin-row select {
+      background: #111827; border: 1px solid #1f3060; color: #fff;
+      padding: 6px 8px; border-radius: 5px; font-size: 0.75rem;
+    }
+    .admin-row select:focus { outline: none; border-color: #c9a227; }
+    .admin-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    /* Summary row */
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 10px; margin-bottom: 22px;
+    }
+    .summary-card {
+      background: #0d1424; border: 1px solid #1c2b44;
+      border-radius: 8px; padding: 12px; text-align: center;
+    }
+    .summary-card .lbl { font-size: 0.6rem; color: #555; text-transform: uppercase; letter-spacing: 1px; }
+    .summary-card .val { font-size: 1.5rem; font-weight: 700; color: #fff; margin-top: 3px; }
+    .summary-card .val.gold { color: #c9a227; }
+
+    /* Leaderboard table */
+    .lb-table { width: 100%; border-collapse: collapse; }
+    .lb-table th {
+      font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px;
+      color: #555; text-align: left; padding: 8px 12px;
+      border-bottom: 1px solid #1a2540;
+    }
+    .lb-table td { padding: 0; border-bottom: 1px solid #0e1828; }
+    .lb-table tr:last-child td { border-bottom: none; }
+
+    .entry-row {
+      display: flex; align-items: stretch;
+      background: #090f1e;
+      transition: background 0.15s;
+    }
+    .entry-row:hover { background: #0d1428; }
+    .entry-row.top3 { background: #0d1530; }
+
+    .rank-cell {
+      min-width: 44px; display: flex; align-items: center; justify-content: center;
+      font-size: 0.8rem; font-weight: 700; color: #555; padding: 10px 8px;
+      flex-shrink: 0;
+    }
+    .rank-cell.r1 { color: #ffd700; }
+    .rank-cell.r2 { color: #c0c0c0; }
+    .rank-cell.r3 { color: #cd7f32; }
+
+    .entry-main {
+      flex: 1; padding: 10px 12px; min-width: 0;
+    }
+    .entry-name {
+      font-size: 0.9rem; font-weight: 600; color: #fff;
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .entry-name a { color: #c9a227; text-decoration: none; font-size: 0.72rem; }
+    .entry-name a:hover { text-decoration: underline; }
+    .entry-champ {
+      font-size: 0.72rem; color: #888; margin-top: 3px;
+    }
+    .entry-champ .team-name { color: #ddd; font-weight: 600; }
+
+    /* Round scores inline */
+    .entry-scores {
+      display: flex; gap: 6px; flex-shrink: 0;
+      align-items: center; padding: 10px 12px;
+    }
+    .rscore {
+      text-align: center; min-width: 34px;
+    }
+    .rscore .rlbl { font-size: 0.55rem; color: #444; text-transform: uppercase; }
+    .rscore .rval { font-size: 0.85rem; font-weight: 600; color: #666; }
+    .rscore .rval.hit { color: #4caf50; }
+
+    .total-score {
+      min-width: 50px; text-align: center;
+      padding: 10px 12px; flex-shrink: 0;
+    }
+    .total-score .tval { font-size: 1.2rem; font-weight: 700; color: #c9a227; }
+    .total-score .tlbl { font-size: 0.55rem; color: #555; text-transform: uppercase; }
+
+    /* No scores yet placeholder */
+    .no-score { font-size: 0.7rem; color: #333; padding: 10px 12px; }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      .entry-scores { display: none; }
+      .admin-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    /* Tooltip for invite link */
+    #copy-toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: #1a4a2e; border: 1px solid #4caf50;
+      color: #4caf50; padding: 8px 18px; border-radius: 20px;
+      font-size: 0.8rem; font-weight: 600; opacity: 0;
+      transition: opacity 0.3s; pointer-events: none; z-index: 999;
+    }
+    #copy-toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🏅 2026 NHL Bracket Leaderboard</h1>
+    <p>All entries · Updated live</p>
+  </div>
+  <div class="nav-links">
+    <a href="bracket.html">My Bracket</a>
+  </div>
+</header>
+
+<main>
+  <div id="invite-bar">
+    <span>Invite friends: share <strong>bracket.html</strong> with them</span>
+    <button class="btn-sm" onclick="copyInvite()">Copy Link</button>
+    <button class="btn-sm outline" onclick="toggleAdmin()">⚙ Enter Results</button>
+  </div>
+
+  <div id="results-banner" style="display:none">
+    <h3>📊 Actual results entered — scores are live</h3>
+    <p>Scores update as series are decided. Check back after each round.</p>
+  </div>
+
+  <!-- Admin panel for entering actual results -->
+  <div id="admin-panel">
+    <h3>Enter Actual Series Results</h3>
+    <p style="color:#666;font-size:0.75rem;margin-bottom:12px">
+      Select the winning team for each completed series. Scores update instantly.
+    </p>
+    <div class="admin-grid" id="admin-grid"></div>
+    <div class="admin-actions">
+      <button class="btn-sm" onclick="saveResults()">Save Results</button>
+      <button class="btn-sm outline" onclick="clearResults()">Clear All Results</button>
+    </div>
+  </div>
+
+  <!-- Summary row -->
+  <div class="summary" id="summary" style="display:none">
+    <div class="summary-card">
+      <div class="lbl">Entries</div>
+      <div class="val" id="s-entries">0</div>
+    </div>
+    <div class="summary-card">
+      <div class="lbl">Most Popular Pick</div>
+      <div class="val gold" id="s-popular" style="font-size:0.9rem;margin-top:6px">–</div>
+    </div>
+    <div class="summary-card">
+      <div class="lbl">Leading Score</div>
+      <div class="val gold" id="s-leader">–</div>
+    </div>
+  </div>
+
+  <div id="state-msg">Loading entries...</div>
+
+  <table class="lb-table" id="lb-table" style="display:none">
+    <thead>
+      <tr>
+        <th style="width:44px">#</th>
+        <th>Participant</th>
+        <th style="text-align:right">Score</th>
+      </tr>
+    </thead>
+    <tbody id="lb-body"></tbody>
+  </table>
+</main>
+
+<div id="copy-toast">Link copied!</div>
+
+<script>
+  // ── Firebase config — must match bracket.html ──
+  const FIREBASE_CONFIG = {
+    apiKey:            'YOUR_API_KEY',
+    authDomain:        'YOUR_PROJECT.firebaseapp.com',
+    projectId:         'YOUR_PROJECT_ID',
+    storageBucket:     'YOUR_PROJECT.appspot.com',
+    messagingSenderId: 'YOUR_SENDER_ID',
+    appId:             'YOUR_APP_ID'
+  };
+
+  const R1_TEAMS = {
+    east: [
+      { id:'E0', top:'Carolina Hurricanes',  bottom:'Ottawa Senators' },
+      { id:'E1', top:'Pittsburgh Penguins',  bottom:'Philadelphia Flyers' },
+      { id:'E2', top:'Buffalo Sabres',        bottom:'Boston Bruins' },
+      { id:'E3', top:'Tampa Bay Lightning',   bottom:'Montreal Canadiens' },
+    ],
+    west: [
+      { id:'W0', top:'Colorado Avalanche',   bottom:'Los Angeles Kings' },
+      { id:'W1', top:'Dallas Stars',         bottom:'Minnesota Wild' },
+      { id:'W2', top:'Vegas Golden Knights', bottom:'Utah Mammoth' },
+      { id:'W3', top:'Edmonton Oilers',      bottom:'Anaheim Ducks' },
+    ]
+  };
+
+  const FEEDS = {
+    'E4':['E0','E1'], 'E5':['E2','E3'], 'E6':['E4','E5'],
+    'W4':['W0','W1'], 'W5':['W2','W3'], 'W6':['W4','W5'],
+    'SCF':['E6','W6']
+  };
+
+  const ROUND_PTS = {
+    'E0':1,'E1':1,'E2':1,'E3':1,'W0':1,'W1':1,'W2':1,'W3':1,
+    'E4':2,'E5':2,'W4':2,'W5':2,'E6':4,'W6':4,'SCF':8
+  };
+
+  const ROUND_LABELS = {
+    'E0':'R1','E1':'R1','E2':'R1','E3':'R1','W0':'R1','W1':'R1','W2':'R1','W3':'R1',
+    'E4':'R2','E5':'R2','W4':'R2','W5':'R2','E6':'CF','W6':'CF','SCF':'SCF'
+  };
+
+  let entries = [];
+  let actualResults = {};
+  let adminMode = false;
+  const adminPicks = {};
+
+  // ── Load all brackets ──
+  async function loadAll() {
+    // Try Firebase first
+    if (FIREBASE_CONFIG.apiKey !== 'YOUR_API_KEY') {
+      try {
+        const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
+        const { getFirestore, collection, getDocs, doc, getDoc } =
+          await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+        const app  = initializeApp(FIREBASE_CONFIG, 'nhl-lb');
+        const db   = getFirestore(app);
+        const snap = await getDocs(collection(db, 'brackets'));
+        entries = snap.docs.map(d => d.data());
+
+        // Load actual results
+        const resSnap = await getDoc(doc(db, 'meta', 'results'));
+        if (resSnap.exists()) actualResults = resSnap.data().picks || {};
+      } catch(e) {
+        console.warn('Firebase load:', e.message);
+        loadFromLocalStorage();
+      }
+    } else {
+      loadFromLocalStorage();
+    }
+
+    // Load local results override
+    const lr = localStorage.getItem('nhl_actual_results');
+    if (lr && Object.keys(actualResults).length === 0) {
+      try { actualResults = JSON.parse(lr); } catch(e) {}
+    }
+
+    render();
+  }
+
+  function loadFromLocalStorage() {
+    entries = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key.startsWith('bracket_') || key === 'bracket_last_name') continue;
+      try {
+        const d = JSON.parse(localStorage.getItem(key));
+        if (d && d.name && d.picks) entries.push(d);
+      } catch(e) {}
+    }
+  }
+
+  // ── Scoring ──
+  function score(myPicks) {
+    if (!actualResults || Object.keys(actualResults).length === 0) return null;
+    let r1=0, r2=0, cf=0, scf=0;
+    for (const [sid, winner] of Object.entries(actualResults)) {
+      if (myPicks[sid] && myPicks[sid] === winner) {
+        const pts = ROUND_PTS[sid] || 0;
+        const lbl = ROUND_LABELS[sid];
+        if (lbl==='R1') r1+=pts;
+        else if (lbl==='R2') r2+=pts;
+        else if (lbl==='CF') cf+=pts;
+        else scf+=pts;
+      }
+    }
+    return { r1, r2, cf, scf, total: r1+r2+cf+scf };
+  }
+
+  // ── Render ──
+  function render() {
+    document.getElementById('state-msg').style.display = 'none';
+
+    const hasResults = Object.keys(actualResults).length > 0;
+    document.getElementById('results-banner').style.display = hasResults ? 'block' : 'none';
+
+    if (entries.length === 0) {
+      document.getElementById('state-msg').style.display = 'block';
+      document.getElementById('state-msg').innerHTML =
+        'No entries yet. <a href="bracket.html" style="color:#c9a227">Be the first to submit! →</a>';
+      return;
+    }
+
+    // Sort by score desc (if results), then name
+    const ranked = entries.map(e => ({...e, sc: score(e.picks)}))
+      .sort((a, b) => {
+        if (a.sc && b.sc) return b.sc.total - a.sc.total;
+        if (a.sc) return -1; if (b.sc) return 1;
+        return a.name.localeCompare(b.name);
+      });
+
+    // Summary
+    document.getElementById('summary').style.display = 'grid';
+    document.getElementById('s-entries').textContent = entries.length;
+
+    // Most popular champ pick
+    const champCounts = {};
+    entries.forEach(e => { const c = e.picks && e.picks['SCF']; if(c) champCounts[c] = (champCounts[c]||0)+1; });
+    const topChamp = Object.entries(champCounts).sort((a,b)=>b[1]-a[1])[0];
+    document.getElementById('s-popular').textContent = topChamp ? topChamp[0] : '–';
+
+    const leader = ranked.find(e => e.sc);
+    document.getElementById('s-leader').textContent = leader ? leader.sc.total : '–';
+
+    // Table
+    const table = document.getElementById('lb-table');
+    table.style.display = 'table';
+    const tbody = document.getElementById('lb-body');
+    tbody.innerHTML = '';
+
+    ranked.forEach((entry, i) => {
+      const tr = document.createElement('tr');
+      const td = document.createElement('td');
+      const row = document.createElement('div');
+      row.className = 'entry-row' + (i < 3 && entry.sc ? ' top3' : '');
+
+      // Rank
+      const rankEl = document.createElement('div');
+      rankEl.className = 'rank-cell' + (i===0?' r1':i===1?' r2':i===2?' r3':'');
+      rankEl.textContent = entry.sc ? (i+1) : '–';
+      row.appendChild(rankEl);
+
+      // Main
+      const main = document.createElement('div');
+      main.className = 'entry-main';
+      const nameEl = document.createElement('div');
+      nameEl.className = 'entry-name';
+      nameEl.innerHTML = `${entry.name} <a href="my-bracket.html?name=${encodeURIComponent(entry.name)}">View bracket →</a>`;
+      main.appendChild(nameEl);
+      const champEl = document.createElement('div');
+      champEl.className = 'entry-champ';
+      const champ = entry.picks && entry.picks['SCF'];
+      if (champ) {
+        const champCorrect = actualResults['SCF'] && actualResults['SCF'] === champ;
+        champEl.innerHTML = `Cup pick: <span class="team-name${champCorrect?' style="color:#4caf50"':''}">${champ}</span>`;
+      } else {
+        champEl.textContent = 'Incomplete bracket';
+      }
+      main.appendChild(champEl);
+      row.appendChild(main);
+
+      // Per-round scores
+      if (entry.sc) {
+        const scoresEl = document.createElement('div');
+        scoresEl.className = 'entry-scores';
+        [['R1', entry.sc.r1, 8], ['R2', entry.sc.r2, 8], ['CF', entry.sc.cf, 8], ['SCF', entry.sc.scf, 8]].forEach(([lbl, val, max]) => {
+          const rs = document.createElement('div'); rs.className = 'rscore';
+          rs.innerHTML = `<div class="rlbl">${lbl}</div><div class="rval${val>0?' hit':''}">${val}</div>`;
+          scoresEl.appendChild(rs);
+        });
+        row.appendChild(scoresEl);
+
+        const totalEl = document.createElement('div');
+        totalEl.className = 'total-score';
+        totalEl.innerHTML = `<div class="tval">${entry.sc.total}</div><div class="tlbl">pts</div>`;
+        row.appendChild(totalEl);
+      } else {
+        const ns = document.createElement('div'); ns.className = 'no-score';
+        ns.textContent = 'Awaiting results';
+        row.appendChild(ns);
+      }
+
+      td.appendChild(row);
+      tr.appendChild(td);
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ── Admin ──
+  function toggleAdmin() {
+    adminMode = !adminMode;
+    const panel = document.getElementById('admin-panel');
+    panel.style.display = adminMode ? 'block' : 'none';
+    if (adminMode) buildAdminGrid();
+  }
+
+  function getAdminTeamsForSlot(sid) {
+    const r1 = [...R1_TEAMS.east, ...R1_TEAMS.west].find(m => m.id === sid);
+    if (r1) return [r1.top, r1.bottom];
+    const [f0, f1] = FEEDS[sid] || [];
+    const a = actualResults[f0] || adminPicks[f0] || null;
+    const b = actualResults[f1] || adminPicks[f1] || null;
+    return [a, b];
+  }
+
+  const SLOT_LABELS = {
+    'E0':'Carolina vs Ottawa','E1':'Pittsburgh vs Philadelphia','E2':'Buffalo vs Boston','E3':'Tampa Bay vs Montreal',
+    'W0':'Colorado vs LA Kings','W1':'Dallas vs Minnesota','W2':'Vegas vs Utah','W3':'Edmonton vs Anaheim',
+    'E4':'East R2 - Series A','E5':'East R2 - Series B','W4':'West R2 - Series A','W5':'West R2 - Series B',
+    'E6':'East Conf. Final','W6':'West Conf. Final','SCF':'Stanley Cup Final'
+  };
+
+  function buildAdminGrid() {
+    const grid = document.getElementById('admin-grid');
+    grid.innerHTML = '';
+    const allSlots = ['E0','E1','E2','E3','W0','W1','W2','W3','E4','E5','W4','W5','E6','W6','SCF'];
+    allSlots.forEach(sid => {
+      const [a, b] = getAdminTeamsForSlot(sid);
+      const row = document.createElement('div'); row.className = 'admin-row';
+      const lbl = document.createElement('label'); lbl.textContent = SLOT_LABELS[sid] || sid;
+      const sel = document.createElement('select'); sel.id = 'admin-' + sid;
+      sel.innerHTML = `<option value="">– Not yet played –</option>` +
+        (a ? `<option value="${a}" ${actualResults[sid]===a?'selected':''}>${a}</option>` : '') +
+        (b ? `<option value="${b}" ${actualResults[sid]===b?'selected':''}>${b}</option>` : '');
+      sel.onchange = () => { if(sel.value) { adminPicks[sid] = sel.value; buildAdminGrid(); } };
+      row.appendChild(lbl); row.appendChild(sel);
+      grid.appendChild(row);
+    });
+  }
+
+  async function saveResults() {
+    const allSlots = ['E0','E1','E2','E3','W0','W1','W2','W3','E4','E5','W4','W5','E6','W6','SCF'];
+    allSlots.forEach(sid => {
+      const el = document.getElementById('admin-' + sid);
+      if (el && el.value) actualResults[sid] = el.value;
+      else if (el) delete actualResults[sid];
+    });
+    localStorage.setItem('nhl_actual_results', JSON.stringify(actualResults));
+
+    try {
+      const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
+      const { getFirestore, doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+      if (FIREBASE_CONFIG.apiKey !== 'YOUR_API_KEY') {
+        const app = initializeApp(FIREBASE_CONFIG, 'nhl-lb');
+        const db  = getFirestore(app);
+        await setDoc(doc(db, 'meta', 'results'), { picks: actualResults });
+      }
+    } catch(e) { console.warn('Firebase save results:', e.message); }
+
+    render();
+    toast('Results saved!');
+  }
+
+  function clearResults() {
+    if (!confirm('Clear all entered results?')) return;
+    actualResults = {};
+    localStorage.removeItem('nhl_actual_results');
+    buildAdminGrid();
+    render();
+  }
+
+  // ── Invite link ──
+  function copyInvite() {
+    const url = location.origin + location.pathname.replace('leaderboard.html', 'bracket.html');
+    navigator.clipboard.writeText(url).then(() => toast('Link copied!')).catch(() => {
+      prompt('Copy this link:', url);
+    });
+  }
+
+  function toast(msg) {
+    const el = document.getElementById('copy-toast');
+    el.textContent = msg; el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 2200);
+  }
+
+  loadAll();
+</script>
+</body>
+</html>

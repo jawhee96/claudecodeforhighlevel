@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2026 NHL Playoff Bracket</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #060b18;
+      color: #e0e0e0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── Modal ── */
+    #modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.92);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 200;
+    }
+    #modal {
+      background: #0d1b3e;
+      border: 2px solid #c9a227;
+      border-radius: 16px;
+      padding: 40px 32px;
+      text-align: center;
+      width: 340px;
+      max-width: 92vw;
+      box-shadow: 0 0 40px rgba(201,162,39,0.25);
+    }
+    #modal .ico { font-size: 2.8rem; margin-bottom: 10px; }
+    #modal h2 { color: #c9a227; font-size: 1.35rem; letter-spacing: 1px; margin-bottom: 6px; }
+    #modal p  { color: #888; font-size: 0.88rem; margin-bottom: 20px; line-height: 1.5; }
+    #modal input {
+      width: 100%; padding: 11px 14px;
+      background: #111827; border: 2px solid #1f2d4e;
+      border-radius: 8px; color: #fff; font-size: 1rem;
+      text-align: center; margin-bottom: 12px;
+      transition: border-color 0.2s;
+    }
+    #modal input:focus { outline: none; border-color: #c9a227; }
+    .btn-gold {
+      background: linear-gradient(135deg, #c9a227, #e8c040);
+      color: #000; border: none; padding: 12px 24px;
+      border-radius: 8px; font-size: 0.95rem; font-weight: 700;
+      cursor: pointer; width: 100%; transition: opacity 0.2s;
+      letter-spacing: 0.4px;
+    }
+    .btn-gold:hover { opacity: 0.88; }
+    .btn-gold:disabled { background: #2a2a2a; color: #555; cursor: not-allowed; }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #060b18 0%, #0d1b3e 100%);
+      border-bottom: 3px solid #c9a227;
+      padding: 14px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 8px;
+    }
+    .header-title h1 { font-size: 1.3rem; color: #c9a227; letter-spacing: 1.5px; text-transform: uppercase; }
+    .header-title p  { color: #555; font-size: 0.75rem; margin-top: 2px; }
+    #user-label { color: #888; font-size: 0.85rem; }
+    #user-label span { color: #fff; font-weight: 700; }
+
+    /* ── Bracket scroll wrapper ── */
+    #bracket-wrap {
+      padding: 20px 12px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .bracket {
+      display: flex;
+      align-items: stretch;
+      min-width: 960px;
+    }
+
+    /* Conference vertical labels */
+    .conf-lbl {
+      writing-mode: vertical-rl;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      font-size: 0.65rem;
+      color: #c9a227;
+      padding: 0 6px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .conf-lbl.west { transform: rotate(180deg); }
+
+    /* Round column */
+    .round-col {
+      display: flex; flex-direction: column; align-items: center;
+      flex: 1; min-width: 0;
+    }
+    .round-lbl {
+      font-size: 0.62rem; text-transform: uppercase;
+      letter-spacing: 1px; color: #444; padding: 6px 2px;
+      white-space: nowrap;
+    }
+    .round-slots {
+      display: flex; flex-direction: column;
+      justify-content: space-around;
+      flex: 1; width: 100%;
+      height: 480px; /* fixed height ensures bracket alignment */
+      padding: 2px;
+    }
+
+    /* ── Matchup box ── */
+    .matchup {
+      border: 1px solid #1c2b44;
+      border-radius: 6px;
+      overflow: hidden;
+      margin: 2px 3px;
+      background: #0a1220;
+      transition: border-color 0.2s;
+    }
+    .matchup.done { border-color: #1a3a5c; }
+
+    .team-btn {
+      display: flex; align-items: center; gap: 7px;
+      padding: 7px 9px;
+      background: transparent; border: none;
+      color: #999; cursor: pointer;
+      font-size: 0.72rem; text-align: left; width: 100%;
+      transition: background 0.15s, color 0.15s;
+      min-height: 30px;
+    }
+    .team-btn:hover:not([disabled]) { background: #101c30; color: #ddd; }
+    .team-btn[disabled] { cursor: default; color: #2a3a50; }
+    .team-btn.picked { background: #0e2a45; color: #fff; font-weight: 600; }
+
+    .team-btn .seed { font-size: 0.62rem; color: #444; min-width: 12px; text-align: right; }
+    .team-btn.picked .seed { color: #c9a227; }
+    .team-btn .tname { flex: 1; line-height: 1.2; }
+    .team-btn .chk { color: #4caf50; font-size: 0.7rem; }
+
+    .mup-div { height: 1px; background: #141e30; }
+
+    /* Games row */
+    .games-row {
+      display: flex; gap: 2px; padding: 3px 5px;
+      background: #070c18; border-top: 1px solid #0e1828;
+      align-items: center;
+    }
+    .games-row .glbl { font-size: 0.58rem; color: #444; margin-right: 1px; }
+    .gbtn {
+      flex: 1; padding: 2px 1px; font-size: 0.62rem;
+      background: #0d1424; border: 1px solid #1a2540;
+      color: #444; cursor: pointer; border-radius: 3px;
+      transition: all 0.12s;
+    }
+    .gbtn:hover { border-color: #c9a227; color: #aaa; }
+    .gbtn.on { background: #c9a227; color: #000; border-color: #c9a227; font-weight: 700; }
+
+    /* ── SCF center column ── */
+    .scf-col {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 0 10px; min-width: 155px; flex-shrink: 0;
+    }
+    .scf-title {
+      font-size: 0.62rem; text-transform: uppercase;
+      letter-spacing: 1px; color: #c9a227;
+      text-align: center; margin-bottom: 8px; line-height: 1.6;
+    }
+    .champ-banner {
+      margin-top: 10px; padding: 7px 10px;
+      background: linear-gradient(135deg, #1a1200, #2a1e00);
+      border: 1px solid #c9a227; border-radius: 6px;
+      font-size: 0.72rem; color: #c9a227; font-weight: 700;
+      text-align: center; line-height: 1.4;
+    }
+
+    /* ── Submit bar ── */
+    #submit-bar {
+      padding: 22px 20px; text-align: center;
+      border-top: 1px solid #111e33;
+    }
+    #progress-txt { color: #555; font-size: 0.82rem; margin-bottom: 11px; }
+    #submit-btn { padding: 13px 44px; font-size: 0.95rem; max-width: 280px; }
+
+    #success-box {
+      display: none; margin: 14px auto 0; max-width: 420px;
+      background: #071510; border: 1px solid #2e7d32;
+      border-radius: 10px; padding: 18px;
+    }
+    #success-box h3 { color: #4caf50; margin-bottom: 8px; }
+    #success-box p  { color: #888; font-size: 0.85rem; margin: 4px 0; }
+    #success-box a  { color: #c9a227; font-weight: 700; text-decoration: none; }
+    #success-box a:hover { text-decoration: underline; }
+
+    /* ── Mobile hint ── */
+    .scroll-hint {
+      display: none; text-align: center;
+      color: #444; font-size: 0.72rem; padding: 6px;
+    }
+    @media (max-width: 980px) { .scroll-hint { display: block; } }
+  </style>
+</head>
+<body>
+
+<!-- Name modal -->
+<div id="modal-overlay">
+  <div id="modal">
+    <div class="ico">🏒</div>
+    <h2>2026 NHL Playoffs</h2>
+    <p>Enter your name to fill out your bracket.<br>Click any team to advance them.</p>
+    <input id="name-input" type="text" placeholder="Your name" maxlength="30"
+           onkeydown="if(event.key==='Enter')startBracket()" autocomplete="off" />
+    <button class="btn-gold" onclick="startBracket()">Start My Bracket →</button>
+  </div>
+</div>
+
+<header>
+  <div class="header-title">
+    <h1>🏆 2026 Stanley Cup Playoffs</h1>
+    <p>Click a team to pick them as the winner · Pick all 15 series to submit</p>
+  </div>
+  <div id="user-label">–</div>
+</header>
+
+<p class="scroll-hint">← Scroll sideways to see full bracket →</p>
+
+<div id="bracket-wrap">
+  <div class="bracket" id="bracket"></div>
+</div>
+
+<div id="submit-bar">
+  <p id="progress-txt">Make your picks to begin</p>
+  <button class="btn-gold" id="submit-btn" disabled onclick="submitBracket()">Submit My Bracket</button>
+  <div id="success-box">
+    <h3>✅ Bracket Submitted!</h3>
+    <p>Your picks are saved.</p>
+    <p style="margin-top:8px">
+      <a id="my-link" href="my-bracket.html">👤 View My Bracket</a>
+      &nbsp;&nbsp;|&nbsp;&nbsp;
+      <a href="leaderboard.html">🏅 View Leaderboard</a>
+    </p>
+  </div>
+</div>
+
+<script>
+  // ── Firebase config — replace with your project's config from console.firebase.google.com ──
+  const FIREBASE_CONFIG = {
+    apiKey:            'YOUR_API_KEY',
+    authDomain:        'YOUR_PROJECT.firebaseapp.com',
+    projectId:         'YOUR_PROJECT_ID',
+    storageBucket:     'YOUR_PROJECT.appspot.com',
+    messagingSenderId: 'YOUR_SENDER_ID',
+    appId:             'YOUR_APP_ID'
+  };
+
+  // ── 2026 NHL Playoff First Round matchups ──
+  const R1 = {
+    east: [
+      { id:'E0', top:{name:'Carolina Hurricanes',  seed:1}, bottom:{name:'Ottawa Senators',     seed:8} },
+      { id:'E1', top:{name:'Pittsburgh Penguins',  seed:2}, bottom:{name:'Philadelphia Flyers', seed:7} },
+      { id:'E2', top:{name:'Buffalo Sabres',        seed:3}, bottom:{name:'Boston Bruins',       seed:6} },
+      { id:'E3', top:{name:'Tampa Bay Lightning',   seed:4}, bottom:{name:'Montreal Canadiens',  seed:5} },
+    ],
+    west: [
+      { id:'W0', top:{name:'Colorado Avalanche',    seed:1}, bottom:{name:'Los Angeles Kings',  seed:8} },
+      { id:'W1', top:{name:'Dallas Stars',          seed:2}, bottom:{name:'Minnesota Wild',     seed:7} },
+      { id:'W2', top:{name:'Vegas Golden Knights',  seed:3}, bottom:{name:'Utah Mammoth',       seed:6} },
+      { id:'W3', top:{name:'Edmonton Oilers',       seed:4}, bottom:{name:'Anaheim Ducks',      seed:5} },
+    ]
+  };
+
+  // Which two slots feed each later slot
+  const FEEDS = {
+    'E4':['E0','E1'], 'E5':['E2','E3'], 'E6':['E4','E5'],
+    'W4':['W0','W1'], 'W5':['W2','W3'], 'W6':['W4','W5'],
+    'SCF':['E6','W6']
+  };
+
+  const ALL_SLOTS = ['E0','E1','E2','E3','E4','E5','E6','W0','W1','W2','W3','W4','W5','W6','SCF'];
+
+  const picks  = {};  // slotId → winner name
+  const gPicks = {};  // slotId → game count 4-7
+  let userName = '';
+  let submitted = false;
+
+  // ── Data helpers ──
+
+  function getTeams(sid) {
+    const r1 = [...R1.east, ...R1.west].find(m => m.id === sid);
+    if (r1) return [r1.top, r1.bottom];
+    const [f0, f1] = FEEDS[sid] || [];
+    return [
+      picks[f0] ? {name: picks[f0]} : null,
+      picks[f1] ? {name: picks[f1]} : null
+    ];
+  }
+
+  function pick(sid, teamName) {
+    if (submitted) return;
+    const old = picks[sid];
+    picks[sid] = teamName;
+    if (old !== teamName) cascade(sid);
+    autoSave();
+    render();
+  }
+
+  function cascade(changedSid) {
+    for (const [slot, feeders] of Object.entries(FEEDS)) {
+      if (!feeders.includes(changedSid)) continue;
+      if (!picks[slot]) continue;
+      const [a, b] = getTeams(slot);
+      const valid = [a && a.name, b && b.name].filter(Boolean);
+      if (!valid.includes(picks[slot])) {
+        delete picks[slot];
+        delete gPicks[slot];
+        cascade(slot);
+      }
+    }
+  }
+
+  function autoSave() {
+    if (!userName) return;
+    localStorage.setItem('bracket_' + userName, JSON.stringify({
+      name: userName, picks: {...picks}, games: {...gPicks}
+    }));
+  }
+
+  // ── Render ──
+
+  function render() {
+    const b = document.getElementById('bracket');
+    b.innerHTML = '';
+
+    b.appendChild(confLbl('Eastern Conference', false));
+    b.appendChild(roundCol('First Round',   ['E0','E1','E2','E3']));
+    b.appendChild(roundCol('Second Round',  ['E4','E5']));
+    b.appendChild(roundCol('Conf. Final',   ['E6']));
+    b.appendChild(renderSCF());
+    b.appendChild(roundCol('Conf. Final',   ['W6']));
+    b.appendChild(roundCol('Second Round',  ['W4','W5']));
+    b.appendChild(roundCol('First Round',   ['W0','W1','W2','W3']));
+    b.appendChild(confLbl('Western Conference', true));
+
+    updateSubmit();
+  }
+
+  function confLbl(text, west) {
+    const el = document.createElement('div');
+    el.className = 'conf-lbl' + (west ? ' west' : '');
+    el.textContent = text;
+    return el;
+  }
+
+  function roundCol(label, slots) {
+    const col = document.createElement('div');
+    col.className = 'round-col';
+    const lbl = document.createElement('div');
+    lbl.className = 'round-lbl';
+    lbl.textContent = label;
+    col.appendChild(lbl);
+    const inner = document.createElement('div');
+    inner.className = 'round-slots';
+    slots.forEach(sid => inner.appendChild(matchupBox(sid)));
+    col.appendChild(inner);
+    return col;
+  }
+
+  function matchupBox(sid, readonly) {
+    const [tA, tB] = getTeams(sid);
+    const winner = picks[sid];
+    const box = document.createElement('div');
+    box.className = 'matchup' + (winner ? ' done' : '');
+
+    [tA, tB].forEach((team, i) => {
+      if (i === 1) {
+        const d = document.createElement('div'); d.className = 'mup-div';
+        box.appendChild(d);
+      }
+      const btn = document.createElement('button');
+      btn.className = 'team-btn';
+      if (!team) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="seed">–</span><span class="tname" style="color:#1e2d42">TBD</span>';
+      } else {
+        if (winner === team.name) btn.classList.add('picked');
+        if (readonly) btn.disabled = true;
+        btn.innerHTML = `<span class="seed">${team.seed||''}</span><span class="tname">${team.name}</span>${winner===team.name?'<span class="chk">✓</span>':''}`;
+        if (!readonly) btn.onclick = () => pick(sid, team.name);
+      }
+      box.appendChild(btn);
+    });
+
+    if (winner) box.appendChild(gamesRow(sid, readonly));
+    return box;
+  }
+
+  function gamesRow(sid, readonly) {
+    const row = document.createElement('div');
+    row.className = 'games-row';
+    const lbl = document.createElement('span');
+    lbl.className = 'glbl'; lbl.textContent = 'in:';
+    row.appendChild(lbl);
+    [4,5,6,7].forEach(g => {
+      const btn = document.createElement('button');
+      btn.className = 'gbtn' + (gPicks[sid] === g ? ' on' : '');
+      btn.textContent = g;
+      if (readonly) btn.disabled = true;
+      else btn.onclick = () => { gPicks[sid] = g; autoSave(); render(); };
+      row.appendChild(btn);
+    });
+    return row;
+  }
+
+  function renderSCF() {
+    const [tA, tB] = getTeams('SCF');
+    const winner = picks['SCF'];
+    const col = document.createElement('div');
+    col.className = 'scf-col';
+
+    const title = document.createElement('div');
+    title.className = 'scf-title';
+    title.innerHTML = '🏆<br>Stanley Cup<br>Final';
+    col.appendChild(title);
+
+    const box = document.createElement('div');
+    box.className = 'matchup' + (winner ? ' done' : '');
+    box.style.width = '152px';
+
+    [tA, tB].forEach((team, i) => {
+      if (i === 1) {
+        const d = document.createElement('div'); d.className = 'mup-div';
+        box.appendChild(d);
+      }
+      const btn = document.createElement('button');
+      btn.className = 'team-btn';
+      if (!team) {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="seed">–</span><span class="tname" style="color:#1e2d42">${i===0?'East Champ':'West Champ'}</span>`;
+      } else {
+        if (winner === team.name) btn.classList.add('picked');
+        btn.innerHTML = `<span class="seed"></span><span class="tname">${team.name}</span>${winner===team.name?'<span class="chk">✓</span>':''}`;
+        btn.onclick = () => { picks['SCF'] = team.name; autoSave(); render(); };
+      }
+      box.appendChild(btn);
+    });
+
+    if (winner) box.appendChild(gamesRow('SCF'));
+    col.appendChild(box);
+
+    if (winner) {
+      const banner = document.createElement('div');
+      banner.className = 'champ-banner';
+      banner.innerHTML = '🏆 ' + winner;
+      col.appendChild(banner);
+    }
+    return col;
+  }
+
+  function updateSubmit() {
+    const done  = ALL_SLOTS.filter(s => picks[s]).length;
+    const total = ALL_SLOTS.length;
+    document.getElementById('progress-txt').textContent =
+      done < total ? `${done} / ${total} picks made` : 'All picks complete! Ready to submit.';
+    document.getElementById('submit-btn').disabled = done < total || submitted;
+  }
+
+  // ── Submit ──
+
+  async function submitBracket() {
+    if (submitted || ALL_SLOTS.filter(s => picks[s]).length < ALL_SLOTS.length) return;
+    const data = { name: userName, timestamp: new Date().toISOString(), picks: {...picks}, games: {...gPicks} };
+    localStorage.setItem('bracket_' + userName, JSON.stringify(data));
+    localStorage.setItem('bracket_last_name', userName);
+
+    try {
+      const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
+      const { getFirestore, doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+      if (FIREBASE_CONFIG.apiKey !== 'YOUR_API_KEY') {
+        const app = initializeApp(FIREBASE_CONFIG, 'nhl-bracket');
+        const db  = getFirestore(app);
+        await setDoc(doc(db, 'brackets', userName), data);
+      }
+    } catch(e) { console.warn('Firebase:', e.message); }
+
+    submitted = true;
+    document.getElementById('submit-btn').disabled = true;
+    document.getElementById('success-box').style.display = 'block';
+    document.getElementById('my-link').href = 'my-bracket.html?name=' + encodeURIComponent(userName);
+  }
+
+  // ── Start ──
+
+  function startBracket() {
+    const val = document.getElementById('name-input').value.trim();
+    if (!val) { document.getElementById('name-input').focus(); return; }
+    userName = val;
+    document.getElementById('user-label').innerHTML = 'Picking for: <span>' + userName + '</span>';
+    document.getElementById('modal-overlay').style.display = 'none';
+
+    const saved = localStorage.getItem('bracket_' + userName);
+    if (saved) {
+      try {
+        const d = JSON.parse(saved);
+        Object.assign(picks,  d.picks || {});
+        Object.assign(gPicks, d.games || {});
+      } catch(e) {}
+    }
+    render();
+  }
+
+  // Pre-fill name from URL ?name=
+  const urlName = new URLSearchParams(location.search).get('name');
+  if (urlName) document.getElementById('name-input').value = urlName;
+</script>
+</body>
+</html>

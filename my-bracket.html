@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My NHL Bracket</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #060b18; color: #e0e0e0; font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+    header {
+      background: linear-gradient(135deg, #060b18, #0d1b3e);
+      border-bottom: 3px solid #c9a227;
+      padding: 14px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 8px;
+    }
+    header h1 { font-size: 1.3rem; color: #c9a227; letter-spacing: 1.5px; text-transform: uppercase; }
+    header p  { color: #666; font-size: 0.75rem; margin-top: 2px; }
+    .nav-links a {
+      color: #c9a227; text-decoration: none; font-size: 0.8rem;
+      font-weight: 600; margin-left: 14px;
+    }
+    .nav-links a:hover { text-decoration: underline; }
+
+    /* Loading / error states */
+    #state-msg {
+      text-align: center; padding: 60px 20px; color: #555; font-size: 1rem;
+    }
+
+    /* Owner banner */
+    #owner-banner {
+      display: none;
+      background: linear-gradient(135deg, #0d1b3e, #162040);
+      border-bottom: 1px solid #1f3060;
+      padding: 14px 20px;
+      text-align: center;
+    }
+    #owner-banner h2 { font-size: 1.1rem; color: #fff; }
+    #owner-banner .sub { color: #888; font-size: 0.8rem; margin-top: 3px; }
+
+    /* Champ highlight */
+    #champ-bar {
+      display: none;
+      background: linear-gradient(135deg, #1a1200, #2a1e00);
+      border: 1px solid #c9a227; border-radius: 10px;
+      margin: 16px auto; max-width: 360px;
+      padding: 14px 20px; text-align: center;
+    }
+    #champ-bar .lbl { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; color: #888; }
+    #champ-bar .team { font-size: 1.2rem; color: #c9a227; font-weight: 700; margin-top: 4px; }
+    #champ-bar .games-lbl { font-size: 0.75rem; color: #666; margin-top: 2px; }
+
+    /* Scroll hint */
+    .scroll-hint { display: none; text-align: center; color: #444; font-size: 0.72rem; padding: 5px; }
+    @media (max-width: 980px) { .scroll-hint { display: block; } }
+
+    /* Bracket — reuse same styles as bracket.html */
+    #bracket-wrap { padding: 16px 12px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .bracket { display: flex; align-items: stretch; min-width: 960px; }
+
+    .conf-lbl {
+      writing-mode: vertical-rl; text-transform: uppercase;
+      letter-spacing: 3px; font-size: 0.65rem; color: #c9a227;
+      padding: 0 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .conf-lbl.west { transform: rotate(180deg); }
+
+    .round-col { display: flex; flex-direction: column; align-items: center; flex: 1; min-width: 0; }
+    .round-lbl { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 1px; color: #444; padding: 6px 2px; white-space: nowrap; }
+    .round-slots {
+      display: flex; flex-direction: column; justify-content: space-around;
+      flex: 1; width: 100%; height: 480px; padding: 2px;
+    }
+
+    .matchup { border: 1px solid #1c2b44; border-radius: 6px; overflow: hidden; margin: 2px 3px; background: #0a1220; }
+    .matchup.done { border-color: #1a3a5c; }
+
+    .team-slot {
+      display: flex; align-items: center; gap: 7px;
+      padding: 7px 9px; font-size: 0.72rem; min-height: 30px;
+      color: #555;
+    }
+    .team-slot.picked { background: #0e2a45; color: #fff; font-weight: 600; }
+    .team-slot .seed { font-size: 0.62rem; color: #444; min-width: 12px; text-align: right; }
+    .team-slot.picked .seed { color: #c9a227; }
+    .team-slot .tname { flex: 1; line-height: 1.2; }
+    .team-slot .chk { color: #4caf50; font-size: 0.7rem; }
+
+    .mup-div { height: 1px; background: #141e30; }
+
+    .games-row { display: flex; gap: 2px; padding: 3px 5px; background: #070c18; border-top: 1px solid #0e1828; align-items: center; }
+    .games-row .glbl { font-size: 0.58rem; color: #444; margin-right: 1px; }
+    .gbtn { flex: 1; padding: 2px 1px; font-size: 0.62rem; background: #0d1424; border: 1px solid #1a2540; color: #444; border-radius: 3px; }
+    .gbtn.on { background: #c9a227; color: #000; border-color: #c9a227; font-weight: 700; }
+
+    .scf-col { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 10px; min-width: 155px; flex-shrink: 0; }
+    .scf-title { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 1px; color: #c9a227; text-align: center; margin-bottom: 8px; line-height: 1.6; }
+    .champ-banner { margin-top: 10px; padding: 7px 10px; background: linear-gradient(135deg, #1a1200, #2a1e00); border: 1px solid #c9a227; border-radius: 6px; font-size: 0.72rem; color: #c9a227; font-weight: 700; text-align: center; }
+
+    /* Score bar */
+    #score-bar {
+      display: none;
+      background: #0d1b3e; border: 1px solid #1f3060;
+      border-radius: 10px; margin: 0 auto 16px; max-width: 500px;
+      padding: 16px 20px; text-align: center;
+    }
+    #score-bar h3 { color: #c9a227; font-size: 1rem; margin-bottom: 10px; }
+    .score-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+    .score-cell { text-align: center; }
+    .score-cell .sc-lbl { font-size: 0.6rem; color: #666; text-transform: uppercase; }
+    .score-cell .sc-val { font-size: 1.1rem; font-weight: 700; color: #fff; margin-top: 2px; }
+    .score-cell .sc-val.gold { color: #c9a227; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🏒 NHL Playoff Bracket</h1>
+    <p id="header-sub">Loading...</p>
+  </div>
+  <div class="nav-links">
+    <a href="bracket.html">Edit Bracket</a>
+    <a href="leaderboard.html">Leaderboard</a>
+  </div>
+</header>
+
+<div id="owner-banner">
+  <h2 id="owner-name"></h2>
+  <div class="sub" id="owner-sub"></div>
+</div>
+
+<div id="champ-bar">
+  <div class="lbl">Stanley Cup Champion Pick</div>
+  <div class="team" id="champ-name"></div>
+  <div class="games-lbl" id="champ-games"></div>
+</div>
+
+<div id="score-bar">
+  <h3>Your Score</h3>
+  <div class="score-grid">
+    <div class="score-cell"><div class="sc-lbl">Round 1</div><div class="sc-val" id="sc-r1">–</div></div>
+    <div class="score-cell"><div class="sc-lbl">Round 2</div><div class="sc-val" id="sc-r2">–</div></div>
+    <div class="score-cell"><div class="sc-lbl">Conf Final</div><div class="sc-val" id="sc-cf">–</div></div>
+    <div class="score-cell"><div class="sc-lbl">SCF</div><div class="sc-val" id="sc-scf">–</div></div>
+    <div class="score-cell"><div class="sc-lbl">Total</div><div class="sc-val gold" id="sc-total">–</div></div>
+  </div>
+</div>
+
+<p class="scroll-hint">← Scroll sideways to see full bracket →</p>
+
+<div id="state-msg">Loading bracket...</div>
+
+<div id="bracket-wrap" style="display:none">
+  <div class="bracket" id="bracket"></div>
+</div>
+
+<script>
+  const FEEDS = {
+    'E4':['E0','E1'], 'E5':['E2','E3'], 'E6':['E4','E5'],
+    'W4':['W0','W1'], 'W5':['W2','W3'], 'W6':['W4','W5'],
+    'SCF':['E6','W6']
+  };
+
+  const R1 = {
+    east: [
+      { id:'E0', top:{name:'Carolina Hurricanes',  seed:1}, bottom:{name:'Ottawa Senators',     seed:8} },
+      { id:'E1', top:{name:'Pittsburgh Penguins',  seed:2}, bottom:{name:'Philadelphia Flyers', seed:7} },
+      { id:'E2', top:{name:'Buffalo Sabres',        seed:3}, bottom:{name:'Boston Bruins',       seed:6} },
+      { id:'E3', top:{name:'Tampa Bay Lightning',   seed:4}, bottom:{name:'Montreal Canadiens',  seed:5} },
+    ],
+    west: [
+      { id:'W0', top:{name:'Colorado Avalanche',    seed:1}, bottom:{name:'Los Angeles Kings',  seed:8} },
+      { id:'W1', top:{name:'Dallas Stars',          seed:2}, bottom:{name:'Minnesota Wild',     seed:7} },
+      { id:'W2', top:{name:'Vegas Golden Knights',  seed:3}, bottom:{name:'Utah Mammoth',       seed:6} },
+      { id:'W3', top:{name:'Edmonton Oilers',       seed:4}, bottom:{name:'Anaheim Ducks',      seed:5} },
+    ]
+  };
+
+  // Firebase config — must match bracket.html
+  const FIREBASE_CONFIG = {
+    apiKey:            'YOUR_API_KEY',
+    authDomain:        'YOUR_PROJECT.firebaseapp.com',
+    projectId:         'YOUR_PROJECT_ID',
+    storageBucket:     'YOUR_PROJECT.appspot.com',
+    messagingSenderId: 'YOUR_SENDER_ID',
+    appId:             'YOUR_APP_ID'
+  };
+
+  let bracketData = null;
+
+  function getTeams(sid, myPicks) {
+    const r1 = [...R1.east, ...R1.west].find(m => m.id === sid);
+    if (r1) return [r1.top, r1.bottom];
+    const [f0, f1] = FEEDS[sid] || [];
+    return [
+      myPicks[f0] ? {name: myPicks[f0]} : null,
+      myPicks[f1] ? {name: myPicks[f1]} : null
+    ];
+  }
+
+  async function loadBracket(name) {
+    // Try localStorage first
+    const local = localStorage.getItem('bracket_' + name);
+    if (local) {
+      try { return JSON.parse(local); } catch(e) {}
+    }
+    // Try Firebase
+    try {
+      const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
+      const { getFirestore, doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+      if (FIREBASE_CONFIG.apiKey !== 'YOUR_API_KEY') {
+        const app = initializeApp(FIREBASE_CONFIG, 'nhl-bracket-view');
+        const db  = getFirestore(app);
+        const snap = await getDoc(doc(db, 'brackets', name));
+        if (snap.exists()) return snap.data();
+      }
+    } catch(e) { console.warn('Firebase load:', e.message); }
+    return null;
+  }
+
+  async function loadResults() {
+    try {
+      const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
+      const { getFirestore, doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+      if (FIREBASE_CONFIG.apiKey !== 'YOUR_API_KEY') {
+        const app = initializeApp(FIREBASE_CONFIG, 'nhl-bracket-view');
+        const db  = getFirestore(app);
+        const snap = await getDoc(doc(db, 'meta', 'results'));
+        if (snap.exists()) return snap.data().picks || {};
+      }
+    } catch(e) {}
+    const r = localStorage.getItem('nhl_actual_results');
+    return r ? JSON.parse(r) : null;
+  }
+
+  function scoreSlot(sid) {
+    // Round points: R1=1, R2=2, CF=4, SCF=8
+    const pts = {'E0':1,'E1':1,'E2':1,'E3':1,'W0':1,'W1':1,'W2':1,'W3':1,
+                 'E4':2,'E5':2,'W4':2,'W5':2,'E6':4,'W6':4,'SCF':8};
+    return pts[sid] || 0;
+  }
+
+  function computeScore(myPicks, actual) {
+    let r1=0, r2=0, cf=0, scf=0;
+    for (const [sid, winner] of Object.entries(actual)) {
+      if (!myPicks[sid] || myPicks[sid] !== winner) continue;
+      const pts = scoreSlot(sid);
+      if (pts === 1) r1 += pts;
+      else if (pts === 2) r2 += pts;
+      else if (pts === 4) cf += pts;
+      else scf += pts;
+    }
+    return { r1, r2, cf, scf, total: r1+r2+cf+scf };
+  }
+
+  function renderBracket(data) {
+    const { picks, games } = data;
+    const b = document.getElementById('bracket');
+    b.innerHTML = '';
+
+    b.appendChild(confLbl('Eastern Conference', false));
+    b.appendChild(roundCol('First Round',  ['E0','E1','E2','E3'], picks, games));
+    b.appendChild(roundCol('Second Round', ['E4','E5'],           picks, games));
+    b.appendChild(roundCol('Conf. Final',  ['E6'],                picks, games));
+    b.appendChild(renderSCF(picks, games));
+    b.appendChild(roundCol('Conf. Final',  ['W6'],                picks, games));
+    b.appendChild(roundCol('Second Round', ['W4','W5'],           picks, games));
+    b.appendChild(roundCol('First Round',  ['W0','W1','W2','W3'], picks, games));
+    b.appendChild(confLbl('Western Conference', true));
+  }
+
+  function confLbl(text, west) {
+    const el = document.createElement('div');
+    el.className = 'conf-lbl' + (west ? ' west' : '');
+    el.textContent = text;
+    return el;
+  }
+
+  function roundCol(label, slots, picks, games) {
+    const col = document.createElement('div'); col.className = 'round-col';
+    const lbl = document.createElement('div'); lbl.className = 'round-lbl'; lbl.textContent = label;
+    col.appendChild(lbl);
+    const inner = document.createElement('div'); inner.className = 'round-slots';
+    slots.forEach(sid => inner.appendChild(matchupBox(sid, picks, games)));
+    col.appendChild(inner);
+    return col;
+  }
+
+  function matchupBox(sid, picks, games) {
+    const [tA, tB] = getTeams(sid, picks);
+    const winner = picks[sid];
+    const box = document.createElement('div');
+    box.className = 'matchup' + (winner ? ' done' : '');
+    [tA, tB].forEach((team, i) => {
+      if (i === 1) { const d = document.createElement('div'); d.className = 'mup-div'; box.appendChild(d); }
+      const slot = document.createElement('div');
+      slot.className = 'team-slot';
+      if (!team) {
+        slot.innerHTML = '<span class="seed">–</span><span class="tname" style="color:#1e2d42">TBD</span>';
+      } else {
+        if (winner === team.name) slot.classList.add('picked');
+        slot.innerHTML = `<span class="seed">${team.seed||''}</span><span class="tname">${team.name}</span>${winner===team.name?'<span class="chk">✓</span>':''}`;
+      }
+      box.appendChild(slot);
+    });
+    if (winner && games) box.appendChild(gamesRowRO(sid, games));
+    return box;
+  }
+
+  function gamesRowRO(sid, games) {
+    const row = document.createElement('div'); row.className = 'games-row';
+    const lbl = document.createElement('span'); lbl.className = 'glbl'; lbl.textContent = 'in:';
+    row.appendChild(lbl);
+    [4,5,6,7].forEach(g => {
+      const btn = document.createElement('button');
+      btn.className = 'gbtn' + (games[sid] === g ? ' on' : '');
+      btn.textContent = g; btn.disabled = true;
+      row.appendChild(btn);
+    });
+    return row;
+  }
+
+  function renderSCF(picks, games) {
+    const [tA, tB] = getTeams('SCF', picks);
+    const winner = picks['SCF'];
+    const col = document.createElement('div'); col.className = 'scf-col';
+    const title = document.createElement('div'); title.className = 'scf-title';
+    title.innerHTML = '🏆<br>Stanley Cup<br>Final';
+    col.appendChild(title);
+    const box = document.createElement('div');
+    box.className = 'matchup' + (winner ? ' done' : '');
+    box.style.width = '152px';
+    [tA, tB].forEach((team, i) => {
+      if (i === 1) { const d = document.createElement('div'); d.className = 'mup-div'; box.appendChild(d); }
+      const slot = document.createElement('div'); slot.className = 'team-slot';
+      if (!team) {
+        slot.innerHTML = `<span class="seed">–</span><span class="tname" style="color:#1e2d42">${i===0?'East Champ':'West Champ'}</span>`;
+      } else {
+        if (winner === team.name) slot.classList.add('picked');
+        slot.innerHTML = `<span class="seed"></span><span class="tname">${team.name}</span>${winner===team.name?'<span class="chk">✓</span>':''}`;
+      }
+      box.appendChild(slot);
+    });
+    if (winner && games) box.appendChild(gamesRowRO('SCF', games));
+    col.appendChild(box);
+    if (winner) {
+      const banner = document.createElement('div'); banner.className = 'champ-banner';
+      banner.innerHTML = '🏆 ' + winner;
+      col.appendChild(banner);
+    }
+    return col;
+  }
+
+  async function init() {
+    const name = new URLSearchParams(location.search).get('name') ||
+                 localStorage.getItem('bracket_last_name');
+
+    document.getElementById('header-sub').textContent = name ? `${name}'s 2026 Playoff Bracket` : '2026 Playoff Bracket';
+
+    if (!name) {
+      document.getElementById('state-msg').innerHTML =
+        'No bracket found. <a href="bracket.html" style="color:#c9a227">Fill out your bracket →</a>';
+      return;
+    }
+
+    const data = await loadBracket(name);
+    if (!data) {
+      document.getElementById('state-msg').innerHTML =
+        `No bracket found for <strong>${name}</strong>. <a href="bracket.html?name=${encodeURIComponent(name)}" style="color:#c9a227">Create one →</a>`;
+      return;
+    }
+
+    bracketData = data;
+    document.getElementById('state-msg').style.display = 'none';
+    document.getElementById('bracket-wrap').style.display = 'block';
+
+    // Owner banner
+    const banner = document.getElementById('owner-banner');
+    banner.style.display = 'block';
+    document.getElementById('owner-name').textContent = name + "'s Bracket";
+    if (data.timestamp) {
+      document.getElementById('owner-sub').textContent =
+        'Submitted ' + new Date(data.timestamp).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
+    }
+
+    // Champ highlight
+    if (data.picks && data.picks['SCF']) {
+      const champBar = document.getElementById('champ-bar');
+      champBar.style.display = 'block';
+      document.getElementById('champ-name').textContent = data.picks['SCF'];
+      const g = data.games && data.games['SCF'];
+      document.getElementById('champ-games').textContent = g ? `Predicted in ${g} games` : '';
+    }
+
+    renderBracket(data);
+
+    // Score if results available
+    const actual = await loadResults();
+    if (actual && Object.keys(actual).length > 0) {
+      const s = computeScore(data.picks, actual);
+      document.getElementById('score-bar').style.display = 'block';
+      document.getElementById('sc-r1').textContent    = s.r1;
+      document.getElementById('sc-r2').textContent    = s.r2;
+      document.getElementById('sc-cf').textContent    = s.cf;
+      document.getElementById('sc-scf').textContent   = s.scf;
+      document.getElementById('sc-total').textContent = s.total;
+    }
+  }
+
+  init();
+</script>
+</body>
+</html>
