@@ -87,72 +87,69 @@
     .summary-card .val { font-size: 1.5rem; font-weight: 700; color: #fff; margin-top: 3px; }
     .summary-card .val.gold { color: #c9a227; }
 
-    /* Leaderboard table */
-    .lb-table { width: 100%; border-collapse: collapse; }
-    .lb-table th {
-      font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px;
-      color: #555; text-align: left; padding: 8px 12px;
-      border-bottom: 1px solid #1a2540;
-    }
-    .lb-table td { padding: 0; border-bottom: 1px solid #0e1828; }
-    .lb-table tr:last-child td { border-bottom: none; }
+    /* Leaderboard entries */
+    .lb-list { display: flex; flex-direction: column; gap: 6px; }
 
-    .entry-row {
-      display: flex; align-items: stretch;
-      background: #090f1e;
-      transition: background 0.15s;
+    .entry-card {
+      background: #090f1e; border: 1px solid #131f35;
+      border-radius: 8px; padding: 12px 16px;
+      display: grid;
+      grid-template-columns: 40px 1fr auto;
+      align-items: center;
+      gap: 12px;
+      transition: border-color 0.15s;
     }
-    .entry-row:hover { background: #0d1428; }
-    .entry-row.top3 { background: #0d1530; }
+    .entry-card:hover { border-color: #1f3060; }
+    .entry-card.top3 { border-color: #1a3060; background: #0a1228; }
 
     .rank-cell {
-      min-width: 44px; display: flex; align-items: center; justify-content: center;
-      font-size: 0.8rem; font-weight: 700; color: #555; padding: 10px 8px;
-      flex-shrink: 0;
+      font-size: 1rem; font-weight: 700; color: #333;
+      text-align: center; flex-shrink: 0;
     }
-    .rank-cell.r1 { color: #ffd700; }
+    .rank-cell.r1 { color: #ffd700; font-size: 1.1rem; }
     .rank-cell.r2 { color: #c0c0c0; }
     .rank-cell.r3 { color: #cd7f32; }
 
-    .entry-main {
-      flex: 1; padding: 10px 12px; min-width: 0;
-    }
+    .entry-main { min-width: 0; }
     .entry-name {
-      font-size: 0.9rem; font-weight: 600; color: #fff;
-      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      font-size: 0.95rem; font-weight: 700; color: #fff;
+      display: flex; align-items: center; gap: 10px;
+      flex-wrap: wrap; margin-bottom: 4px;
     }
-    .entry-name a { color: #c9a227; text-decoration: none; font-size: 0.72rem; }
+    .entry-name a {
+      color: #c9a227; text-decoration: none; font-size: 0.7rem;
+      font-weight: 500; white-space: nowrap;
+    }
     .entry-name a:hover { text-decoration: underline; }
     .entry-champ {
-      font-size: 0.72rem; color: #888; margin-top: 3px;
+      font-size: 0.75rem; color: #666;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-    .entry-champ .team-name { color: #ddd; font-weight: 600; }
+    .entry-champ .team-name { color: #aaa; font-weight: 600; }
+    .entry-champ .team-name.correct { color: #4caf50; }
 
-    /* Round scores inline */
-    .entry-scores {
-      display: flex; gap: 6px; flex-shrink: 0;
-      align-items: center; padding: 10px 12px;
-    }
-    .rscore {
-      text-align: center; min-width: 34px;
-    }
-    .rscore .rlbl { font-size: 0.55rem; color: #444; text-transform: uppercase; }
-    .rscore .rval { font-size: 0.85rem; font-weight: 600; color: #666; }
+    /* Score section */
+    .entry-score-area { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+
+    .round-scores { display: flex; gap: 6px; }
+    .rscore { text-align: center; min-width: 32px; }
+    .rscore .rlbl { font-size: 0.5rem; color: #333; text-transform: uppercase; letter-spacing: 0.5px; }
+    .rscore .rval { font-size: 0.8rem; font-weight: 600; color: #444; margin-top: 1px; }
     .rscore .rval.hit { color: #4caf50; }
 
-    .total-score {
-      min-width: 50px; text-align: center;
-      padding: 10px 12px; flex-shrink: 0;
+    .total-pts {
+      text-align: center; min-width: 48px;
+      border-left: 1px solid #1a2540; padding-left: 10px;
     }
-    .total-score .tval { font-size: 1.2rem; font-weight: 700; color: #c9a227; }
-    .total-score .tlbl { font-size: 0.55rem; color: #555; text-transform: uppercase; }
+    .total-pts .tval { font-size: 1.3rem; font-weight: 700; color: #c9a227; line-height: 1; }
+    .total-pts .tlbl { font-size: 0.5rem; color: #444; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
 
-    /* No scores yet placeholder */
-    .no-score { font-size: 0.7rem; color: #333; padding: 10px 12px; }
+    .awaiting { font-size: 0.7rem; color: #2a3a50; font-style: italic; white-space: nowrap; }
 
     /* Responsive */
     @media (max-width: 600px) {
-      .entry-scores { display: none; }
+      .round-scores { display: none; }
+      .entry-card { grid-template-columns: 36px 1fr auto; gap: 8px; padding: 10px 12px; }
       .admin-grid { grid-template-columns: 1fr 1fr; }
     }
 
@@ -222,16 +219,7 @@
 
   <div id="state-msg">Loading entries...</div>
 
-  <table class="lb-table" id="lb-table" style="display:none">
-    <thead>
-      <tr>
-        <th style="width:44px">#</th>
-        <th>Participant</th>
-        <th style="text-align:right">Score</th>
-      </tr>
-    </thead>
-    <tbody id="lb-body"></tbody>
-  </table>
+  <div class="lb-list" id="lb-list"></div>
 </main>
 
 <div id="copy-toast">Link copied!</div>
@@ -376,67 +364,55 @@
     const leader = ranked.find(e => e.sc);
     document.getElementById('s-leader').textContent = leader ? leader.sc.total : '–';
 
-    // Table
-    const table = document.getElementById('lb-table');
-    table.style.display = 'table';
-    const tbody = document.getElementById('lb-body');
-    tbody.innerHTML = '';
+    // Entry cards
+    const list = document.getElementById('lb-list');
+    list.innerHTML = '';
 
     ranked.forEach((entry, i) => {
-      const tr = document.createElement('tr');
-      const td = document.createElement('td');
-      const row = document.createElement('div');
-      row.className = 'entry-row' + (i < 3 && entry.sc ? ' top3' : '');
+      const card = document.createElement('div');
+      card.className = 'entry-card' + (i < 3 && entry.sc ? ' top3' : '');
 
       // Rank
       const rankEl = document.createElement('div');
       rankEl.className = 'rank-cell' + (i===0?' r1':i===1?' r2':i===2?' r3':'');
       rankEl.textContent = entry.sc ? (i+1) : '–';
-      row.appendChild(rankEl);
+      card.appendChild(rankEl);
 
-      // Main
+      // Main info
       const main = document.createElement('div');
       main.className = 'entry-main';
-      const nameEl = document.createElement('div');
-      nameEl.className = 'entry-name';
-      nameEl.innerHTML = `${entry.name} <a href="my-bracket.html?name=${encodeURIComponent(entry.name)}">View bracket →</a>`;
-      main.appendChild(nameEl);
-      const champEl = document.createElement('div');
-      champEl.className = 'entry-champ';
       const champ = entry.picks && entry.picks['SCF'];
-      if (champ) {
-        const champCorrect = actualResults['SCF'] && actualResults['SCF'] === champ;
-        champEl.innerHTML = `Cup pick: <span class="team-name${champCorrect?' style="color:#4caf50"':''}">${champ}</span>`;
-      } else {
-        champEl.textContent = 'Incomplete bracket';
-      }
-      main.appendChild(champEl);
-      row.appendChild(main);
+      const champCorrect = champ && actualResults['SCF'] && actualResults['SCF'] === champ;
+      main.innerHTML = `
+        <div class="entry-name">
+          ${entry.name}
+          <a href="/my-bracket?name=${encodeURIComponent(entry.name)}">View bracket →</a>
+        </div>
+        <div class="entry-champ">
+          🏆 Cup pick: <span class="team-name${champCorrect?' correct':''}">${champ || 'No pick'}</span>
+        </div>`;
+      card.appendChild(main);
 
-      // Per-round scores
+      // Score area
+      const scoreArea = document.createElement('div');
+      scoreArea.className = 'entry-score-area';
       if (entry.sc) {
-        const scoresEl = document.createElement('div');
-        scoresEl.className = 'entry-scores';
-        [['R1', entry.sc.r1, 8], ['R2', entry.sc.r2, 8], ['CF', entry.sc.cf, 8], ['SCF', entry.sc.scf, 8]].forEach(([lbl, val, max]) => {
-          const rs = document.createElement('div'); rs.className = 'rscore';
-          rs.innerHTML = `<div class="rlbl">${lbl}</div><div class="rval${val>0?' hit':''}">${val}</div>`;
-          scoresEl.appendChild(rs);
-        });
-        row.appendChild(scoresEl);
-
-        const totalEl = document.createElement('div');
-        totalEl.className = 'total-score';
-        totalEl.innerHTML = `<div class="tval">${entry.sc.total}</div><div class="tlbl">pts</div>`;
-        row.appendChild(totalEl);
+        scoreArea.innerHTML = `
+          <div class="round-scores">
+            ${[['R1',entry.sc.r1],['R2',entry.sc.r2],['CF',entry.sc.cf],['SCF',entry.sc.scf]].map(([l,v])=>
+              `<div class="rscore"><div class="rlbl">${l}</div><div class="rval${v>0?' hit':''}">${v}</div></div>`
+            ).join('')}
+          </div>
+          <div class="total-pts">
+            <div class="tval">${entry.sc.total}</div>
+            <div class="tlbl">pts</div>
+          </div>`;
       } else {
-        const ns = document.createElement('div'); ns.className = 'no-score';
-        ns.textContent = 'Awaiting results';
-        row.appendChild(ns);
+        scoreArea.innerHTML = '<div class="awaiting">Awaiting results</div>';
       }
+      card.appendChild(scoreArea);
 
-      td.appendChild(row);
-      tr.appendChild(td);
-      tbody.appendChild(tr);
+      list.appendChild(card);
     });
   }
 
