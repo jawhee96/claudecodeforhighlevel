@@ -1,0 +1,27 @@
+{
+
+  "mcpServers": {
+
+    "mindbody": {
+
+      "command": "bunx",
+
+      "args": ["@vespo92/mindbody-mcp"],
+
+      "env": {
+
+        "MINDBODY_API_KEY": "b2c8243124e6448692b756b16dce65ba",
+
+        "MINDBODY_SITE_ID": "9156",
+
+        "MINDBODY_SOURCE_NAME": "360FitnessRedDeerLTD",
+
+        "MINDBODY_SOURCE_PASSWORD": "@Jwwhlr96"
+
+      }
+
+    }
+
+  }
+
+}
