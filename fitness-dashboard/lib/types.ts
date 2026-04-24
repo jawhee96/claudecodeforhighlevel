@@ -15,3 +15,11 @@ export interface CrmRow {
   value: number
   location: Location
 }
+
+export interface BookingRow {
+  id: string
+  status: 'scheduled' | 'rescheduled' | 'completed' | 'no_show' | 'cancelled'
+  location: Location
+  date: string
+  bookingPage: string
+}

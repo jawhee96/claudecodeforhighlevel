@@ -1,4 +1,4 @@
-import type { MetaRow, CrmRow } from './types'
+import type { MetaRow, CrmRow, BookingRow } from './types'
 
 export const fmt$ = (n: number) => '$' + Math.round(n).toLocaleString()
 export const fmtK = (n: number) =>
@@ -43,5 +43,31 @@ export function crmStats(rows: CrmRow[]) {
     wonRev: won.reduce((s, r) => s + r.value, 0),
     pipeVal: open.reduce((s, r) => s + r.value, 0),
     closeRate: rows.length > 0 ? (won.length / rows.length * 100).toFixed(1) : '0.0',
+  }
+}
+
+export function bookingStats(bookings: BookingRow[], meta: MetaRow[]) {
+  const active = bookings.filter(b => b.status !== 'cancelled')
+  const totalLeads = meta.reduce((s, r) => s + r.leads, 0)
+  const totalSpend = meta.reduce((s, r) => s + r.spend, 0)
+  const bookingRate = totalLeads > 0 ? (active.length / totalLeads * 100) : 0
+  const costPerBooking = active.length > 0 ? totalSpend / active.length : 0
+
+  return { active, bookingRate, costPerBooking }
+}
+
+export function dailyBookings(rows: BookingRow[]) {
+  const rdMap: Record<string, number> = {}
+  const spMap: Record<string, number> = {}
+  for (const r of rows) {
+    if (r.status === 'cancelled') continue
+    if (r.location === 'RD') rdMap[r.date] = (rdMap[r.date] ?? 0) + 1
+    else spMap[r.date] = (spMap[r.date] ?? 0) + 1
+  }
+  const days = [...new Set([...Object.keys(rdMap), ...Object.keys(spMap)])].sort()
+  return {
+    days,
+    rd: days.map(d => rdMap[d] ?? 0),
+    sp: days.map(d => spMap[d] ?? 0),
   }
 }
