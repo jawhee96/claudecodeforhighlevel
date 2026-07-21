@@ -1,0 +1,27 @@
+{
+  "meta": {
+    "snapshotDate": "2026-07-20",
+    "sources": ["user-supplied"],
+    "notes": "Sample import envelope. Replace ids/values with real, authorized data. Records are merged by id onto the generated league; imported fields are flagged 'user-edited'. Nothing is invented silently."
+  },
+  "players": [
+    {
+      "id": "P00001",
+      "firstName": "Example",
+      "lastName": "Player",
+      "position": "C",
+      "overall": 91,
+      "potential": 93,
+      "dataStatus": "user-edited"
+    }
+  ],
+  "contracts": [
+    {
+      "id": "C_P00001",
+      "aav": 12600000,
+      "startSeason": 2026,
+      "endSeason": 2033,
+      "dataStatus": "user-edited"
+    }
+  ]
+}

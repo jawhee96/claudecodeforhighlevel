@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: #0d1117;
+  color: #e6edf3;
+  font-family: Inter, system-ui, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Compact professional scrollbars */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #0d1117;
+}
+::-webkit-scrollbar-thumb {
+  background: #2a3242;
+  border-radius: 5px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3a4456;
+}
+
+@layer components {
+  .card {
+    @apply rounded-lg border border-ice-border bg-ice-panel shadow-sm;
+  }
+  .card-head {
+    @apply flex items-center justify-between border-b border-ice-border px-4 py-2.5 text-sm font-semibold text-ice-text;
+  }
+  .btn {
+    @apply inline-flex items-center gap-1.5 rounded-md border border-ice-border bg-ice-panel2 px-3 py-1.5 text-sm font-medium text-ice-text transition-colors hover:border-ice-accent hover:text-ice-accent disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-ice-border disabled:hover:text-ice-text;
+  }
+  .btn-primary {
+    @apply border-ice-accent bg-ice-accent/10 text-ice-accent hover:bg-ice-accent/20;
+  }
+  .stat-tile {
+    @apply rounded-lg border border-ice-border bg-ice-panel px-3 py-2.5;
+  }
+  .table-compact th {
+    @apply whitespace-nowrap px-2.5 py-1.5 text-left text-xs font-semibold uppercase tracking-wide text-ice-muted;
+  }
+  .table-compact td {
+    @apply whitespace-nowrap px-2.5 py-1.5 text-sm;
+  }
+  .table-compact tbody tr {
+    @apply border-t border-ice-border/60 hover:bg-ice-panel2/60;
+  }
+  .badge {
+    @apply inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide;
+  }
+}
